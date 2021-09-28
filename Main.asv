@@ -1,0 +1,113 @@
+function o_PointsEstimated=geometric_simulation(w1,w2,w3,w4,w5,w6)
+
+if nargin==0
+    
+    en
+
+%% Generate 6 points
+% inputPoints  = SimplePointGenerator();
+% 
+% % plot original points
+% subplot(3,2,1);
+% 50 is size of each circle
+% scatter3(inputPoints(1,:),inputPoints(2,:),inputPoints(3,:),50,inputPoints(1:3,:)','filled');
+% xlabel('U'); ylabel('V'); zlabel('W');
+% a = [1:size(inputPoints,2)]'; b = num2str(a); c = cellstr(b);
+% d=0.02;
+% text(inputPoints(1,:)+d, inputPoints(2,:)+d,inputPoints(3,:)+d, c);
+
+%% Generate Cube
+
+showNumbersFlag=false;
+numberOfPointsEachLine=30;
+inputPoints = CubePointsGenerator( numberOfPointsEachLine );
+%InputPoints=InputPoints(:,20:30);
+
+% plot the cube
+subplot(3,2,1);
+scatter3(inputPoints(1,:),inputPoints(2,:),inputPoints(3,:),50,inputPoints(1:3,:)','filled');
+xlabel('U'); ylabel('V'); zlabel('W');
+title('1-  3D cube (U,V,W)');
+a = [1:size(inputPoints,2)]';
+b = num2str(a); 
+c = cellstr(b);
+d=0.02;
+if showNumbersFlag 
+    text(inputPoints(1,:)+d, inputPoints(2,:)+d,inputPoints(3,:)+d, c);
+end
+
+%% Transformation Parameters
+
+% Intrinsic Params
+phiX=1;
+phiY=1;
+gamma=0;
+deltaX=0;
+deltaY=0;
+
+Lambda=[ phiX gamma deltaX 0;
+         0    phiY  deltaY 0;
+         0      0     1    0
+        ];
+
+% Extrinsic Parameters
+n=[0;0;1];
+theta=pi/4;
+I=eye(3);
+S=[ 0  -n(3) n(2)
+    n(3) 0   -n(1)
+    -n(2) n(1) 0
+    ];
+Omega= (I + sin(theta)*S + (1-cos(theta))* (S*S))';
+Tau=[0;0;0];
+
+%Omega=[[R,Tau];[0 0 0 1]];
+
+%% Get the image
+removeLambda=false;
+outputPoints1  = TakeImage(inputPoints, Lambda, Omega, Tau, removeLambda);
+
+
+subplot(3,2,3);
+scatter(outputPoints1(1,:),outputPoints1(2,:),50,inputPoints(1:3,:)','filled');
+title('3-  Result without division by lambda');
+
+% remove Lamda effect
+removeLambda=true;
+outputPoints2  = TakeImage(inputPoints, Lambda, Omega, Tau, removeLambda);
+subplot(3,2,4);
+scatter(outputPoints2(1,:),outputPoints2(2,:),50,inputPoints(1:3,:)','filled');
+title('4-  Result with division by lambda');
+%text(X+d, Y+d , c);
+
+%% estimate Extrinsic Parameters
+
+[ OmegaE1,TauE1] = EstimateExtrinsic( inputPoints,outputPoints1);
+
+outputPointsEstimated = TakeImage(inputPoints, Lambda, OmegaE1, TauE1, false);
+subplot(3,2,5);
+scatter(outputPointsEstimated(1,:),outputPointsEstimated(2,:),50,inputPoints(1:3,:)','filled');
+title('5-  results with estimated parameters');
+
+[ OmegaE1,TauE1] = EstimateExtrinsic( inputPoints,outputPoints2);
+outputPointsEstimated = TakeImage(inputPoints, Lambda, OmegaE1, TauE1, true);
+subplot(3,2,6);
+scatter(outputPointsEstimated(1,:),outputPointsEstimated(2,:),50,inputPoints(1:3,:)','filled');
+title('6-  result with estimated parameters');
+%%
+
+
+%% trash
+% %% Get the image (implement by details. my implementation of equation 14.8 from book
+% t1=phiX*(R(1,1)*InputPoints(1,:) + R(1,2)*InputPoints(2,:) + R(1,3)*InputPoints(3,:) + Tau(1));
+% t2=(R(2,1)*InputPoints(1,:) + R(2,2)*InputPoints(2,:) + R(2,3)*InputPoints(3,:) + Tau(2));
+% t3=R(3,1)*InputPoints(1,:) + R(3,2)*InputPoints(2,:) + R(3,3)*InputPoints(3,:) + Tau(3);
+% 
+% outputPoints3=zeros(2,size(InputPoints,2));
+% outputPoints3(1,:)=((t1+ (gamma*t2))./t3)+deltaX;
+% outputPoints3(2,:)=((phiY*t2)./t3)+deltaY;
+% 
+% subplot(2,2,3);
+% scatter(outputPoints3(1,:),outputPoints3(2,:),50,InputPoints(1:3,:)','filled');
+% title('3-  Result without any lambda (cartesian space)');
+% toc;
